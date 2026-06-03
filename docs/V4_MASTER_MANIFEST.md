@@ -1,686 +1,447 @@
-# ONETO EUR/USD AI Tool — V4.0 Architecture Freeze
+# ONETO EUR/USD AI Tool — V4.0 Master Manifest
 
-**Status:** APPROVED  
-**Revision:** 1 (Final)  
-**Approved by:** Rolan / ONETO  
-**Date:** 2026-06  
-**Document version:** 1.0  
-
-> This document is the single source of truth for V4.0 architecture.  
-> No implementation decision may contradict this document without an explicit revision being created and approved.
+**Project Brain — This file must be updated after every development phase.**  
+**If this file is out of date, the project state is unknown.**
 
 ---
 
 ## Table of Contents
 
-1. [System Overview](#1-system-overview)
-2. [System Architecture Diagram](#2-system-architecture-diagram)
-3. [Module Architecture](#3-module-architecture)
-4. [Data Flow](#4-data-flow)
-5. [Decision Flow](#5-decision-flow)
-6. [Risk Flow](#6-risk-flow)
-7. [AI Committee Flow](#7-ai-committee-flow)
-8. [Market Regime Flow](#8-market-regime-flow)
-9. [Learning Engine Flow](#9-learning-engine-flow)
-10. [ZH/EN Internationalization Strategy](#10-zhen-internationalization-strategy)
-11. [Future Scalability Strategy](#11-future-scalability-strategy)
+1. [Current Status](#1-current-status)
+2. [Version History](#2-version-history)
+3. [Approved Modules](#3-approved-modules)
+4. [Completed Phases](#4-completed-phases)
+5. [Pending Phases](#5-pending-phases)
+6. [Folder Structure](#6-folder-structure)
+7. [Dependency Tree](#7-dependency-tree)
+8. [Core Interface Summary](#8-core-interface-summary)
+9. [API Status](#9-api-status)
+10. [Database Status](#10-database-status)
+11. [Implementation Roadmap](#11-implementation-roadmap)
+12. [Development Rules](#12-development-rules)
+13. [Known Issues](#13-known-issues)
 
 ---
 
-## 1. System Overview
+## 1. Current Status
 
-ONETO EUR/USD AI Tool v4.0 transforms the v3.2 signal display tool into a full institutional-grade AI trading research system.
-
-The system is a **closed-loop decision pipeline**:
-
-```
-Market Data → Memory → Regime → MTF → Committee → Decision → Risk → Signal
-→ Storage → Learning → Backtest → Paper Trading
-```
-
-Every signal generated passes through all layers in sequence.  
-No signal is published that has not been validated by the full pipeline.
-
-### Core Principles
-
-| Principle | Description |
-|-----------|-------------|
-| **Closed loop** | Every signal feeds back into the learning system |
-| **Graceful degradation** | Any API failure falls back, never crashes |
-| **Human approval gate** | Weight changes require manual confirmation |
-| **Immutable audit trail** | All system events are permanently logged |
-| **Language agnostic** | All UI strings come from i18n layer |
+| Field | Value |
+|-------|-------|
+| **Current Version** | v4.0 |
+| **Current Phase** | Phase 0 — Documentation Foundation |
+| **Next Phase** | Phase 1 — i18n + Utilities + Services + State |
+| **Architecture Freeze** | ✅ Approved (Revision 1) |
+| **Coding Status** | NOT STARTED |
+| **Last Updated** | 2026-06 |
+| **Last Updated By** | Rolan / ONETO |
+| **Base File (last working)** | `index.html` (v3.2, TradingView K-line confirmed working) |
 
 ---
 
-## 2. System Architecture Diagram
+## 2. Version History
 
-```
-╔══════════════════════════════════════════════════════════════════╗
-║                      MARKET DATA LAYER                           ║
-║   Twelve Data · FRED · NewsAPI · CFTC COT · ForexFactory RSS     ║
-║   SimDataService (fallback of last resort)                       ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                       MEMORY LAYER                               ║
-║   Central Bank Memory  ·  News Memory  ·  Economic Memory        ║
-║   COT History          ·  Regime History                         ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                 MARKET REGIME ENGINE                             ║
-║   trending_bull · trending_bear · ranging                        ║
-║   volatile · breakout_up · breakout_down                         ║
-║   → Outputs: regime label + weight_adjustment JSON               ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║           MULTI-TIMEFRAME ALIGNMENT ENGINE (MTF)                 ║
-║   1D bias · 4H bias · 1H bias → MTF Score → Alignment Gate      ║
-║   NOT_ALIGNED → immediate NO_TRADE (pipeline stops here)         ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                     AI COMMITTEE                                 ║
-║   Agent 1: Technical Analyst      (35%)                          ║
-║   Agent 2: Macro Analyst          (20%)                          ║
-║   Agent 3: Positioning Analyst    (10%)                          ║
-║   Agent 4: News Analyst           (20%)                          ║
-║   Agent 5: Risk Analyst           (15%)                          ║
-║   → Each outputs: score · vote · confidence · reason × 2         ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                    DECISION ENGINE                               ║
-║   Weighted aggregation of 5 agent scores                         ║
-║   Regime-adjusted weights from committee_weights table           ║
-║   Confidence filtering · Agent agreement gate · RR gate          ║
-║   → Output: STRONG_BUY / BUY / WEAK_BUY / NEUTRAL /             ║
-║             WEAK_SELL / SELL / STRONG_SELL / NO_TRADE            ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                     RISK MANAGER                                 ║
-║   Reads: account_profile · regime · risk_score · drawdown        ║
-║   Computes: lot_size · max_loss · expected_profit · RR           ║
-║   Applies: regime multiplier · drawdown multiplier               ║
-║            performance multiplier · risk_score multiplier        ║
-║   → Output: complete position specification                      ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                   SIGNAL GENERATION                              ║
-║   Assembles final signal record                                  ║
-║   Attaches: AI Macro Report (ZH + EN)                            ║
-║   Attaches: Per-agent explanation (ZH + EN)                      ║
-║   → Published to UI · Written to database · Written to audit log ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║              HISTORICAL DATABASE (Supabase PostgreSQL)           ║
-║   17 tables · Row-Level Security · Immutable audit log           ║
-║   signals · committee_votes · market_snapshots                   ║
-║   account_profiles · api_health · signal_audit_log               ║
-║   committee_weights · cot_history · macro_reports                ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                    LEARNING ENGINE                               ║
-║   Runs after every 10 closed trades                              ║
-║   Computes: win_rate · profit_factor · sharpe · expectancy       ║
-║   Per-agent accuracy from committee_votes                        ║
-║   Proposes weight adjustments (manual approval required)         ║
-║   Historical similarity scoring via cosine similarity            ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                   BACKTEST ENGINE                                ║
-║   Replays historical signals against stored market_snapshots     ║
-║   Clickable records with full context expansion                  ║
-║   Regime-stratified · Session-stratified · Per-agent breakdown   ║
-╚══════════════════════════════════════════════════════════════════╝
-                               ↓
-╔══════════════════════════════════════════════════════════════════╗
-║                PAPER TRADING ENGINE                              ║
-║   Validation gates: 100 · 300 · 500 · 1000 trades               ║
-║   Tracks: entry · SL · TP · P&L · duration · drawdown           ║
-║   Writes results to signal_results → feeds Learning Engine       ║
-╚══════════════════════════════════════════════════════════════════╝
-```
+| Version | Date | Description | Status |
+|---------|------|-------------|--------|
+| v3.0 | 2026-05 | Initial signal display tool (single HTML, simulated data) | ✅ Complete |
+| v3.1 | 2026-05 | Twelve Data API integration attempt; OANDA abandoned | ✅ Complete |
+| v3.2 | 2026-05 | TradingView K-line fix; candlestick bug resolved | ✅ Complete |
+| v4.0 Arch | 2026-06 | Full institutional architecture designed and approved | ✅ Approved |
+| v4.0 P0 | 2026-06 | Documentation foundation (this phase) | 🔄 In Progress |
+| v4.0 P1 | — | i18n + Utilities + Services + State | ⏳ Pending |
+| v4.0 P2 | — | MTF Engine + AI Committee + Regime Engine | ⏳ Pending |
+| v4.0 P3 | — | Decision Engine + Risk Manager + Paper Trading | ⏳ Pending |
+| v4.0 P4 | — | UI Integration + Dashboard + Signal Cards | ⏳ Pending |
+| v4.0 P5 | — | Supabase Integration | ⏳ Pending |
+| v4.0 P6 | — | Memory Engines + Live API Integration | ⏳ Pending |
+| v4.0 P7 | — | Learning Engine + Advanced Backtest | ⏳ Pending |
 
 ---
 
-## 3. Module Architecture
+## 3. Approved Modules
 
-### 3.1 Core Engines
+All modules listed below are part of the V4.0 Architecture Freeze (Revision 1).
 
-| Module | File | Responsibility | Phase |
-|--------|------|----------------|-------|
-| Decision Engine | `src/core/DecisionEngine.js` | 8-state signal from weighted committee scores | 3 |
-| MTF Engine | `src/core/MTFEngine.js` | 3-timeframe bias alignment pre-gate | 2 |
-| Risk Manager | `src/core/RiskManager.js` | Position sizing, dynamic rules, drawdown protection | 3 |
-| Regime Engine | `src/core/RegimeEngine.js` | Regime classification, weight adjustment output | 2 |
-| Learning Engine | `src/core/LearningEngine.js` | Win rate analytics, weight proposals | 7 |
-
-### 3.2 AI Committee Agents
-
-| Agent | File | Weight | Primary Data Source | Phase |
-|-------|------|--------|---------------------|-------|
-| Technical Analyst | `src/agents/TechnicalAnalyst.js` | 35% | OHLCV candles | 2 |
-| Macro Analyst | `src/agents/MacroAnalyst.js` | 20% | Central Bank Memory, FRED | 2 |
-| Positioning Analyst | `src/agents/PositioningAnalyst.js` | 10% | COT history, DXY | 2 |
-| News Analyst | `src/agents/NewsAnalyst.js` | 20% | News memory, news events | 2 |
-| Risk Analyst | `src/agents/RiskAnalyst.js` | 15% | ATR, regime, economic events | 2 |
-| Orchestrator | `src/agents/CommitteeOrchestrator.js` | — | All agents | 2 |
-
-### 3.3 Memory Layer
-
-| Module | File | Stores | Phase |
-|--------|------|--------|-------|
-| Central Bank Memory | `src/memory/CentralBankMemory.js` | Fed/ECB stance history, policy momentum | 6 |
-| News Memory | `src/memory/NewsMemory.js` | Rolling 24h/7d/30d sentiment windows | 6 |
-| Economic Memory | `src/memory/EconomicMemory.js` | Surprise score history, forecast vs actual | 6 |
-| COT Memory | `src/memory/COTMemory.js` | Weekly CFTC positioning, z-scores | 6 |
-
-### 3.4 Services
-
-| Service | File | Purpose | Phase |
-|---------|------|---------|-------|
-| Twelve Data | `src/services/TwelveDataService.js` | Real-time price + OHLCV | 1 |
-| FRED | `src/services/FREDService.js` | Macro economic data | 6 |
-| News API | `src/services/NewsAPIService.js` | Financial headlines | 6 |
-| COT | `src/services/COTService.js` | CFTC positioning data | 6 |
-| Calendar | `src/services/CalendarService.js` | Economic events | 6 |
-| Sim Data | `src/services/SimDataService.js` | Fallback simulation | 1 |
-| Normalizer | `src/services/DataNormalizer.js` | Unified format conversion | 6 |
+| Module | Implementation Phase | Architecture Status |
+|--------|---------------------|---------------------|
+| ZH/EN Internationalization | Phase 1 | ✅ Approved |
+| Utility Functions | Phase 1 | ✅ Approved |
+| Twelve Data Service | Phase 1 | ✅ Approved |
+| SimData Service | Phase 1 | ✅ Approved |
+| State Layer (App + Account) | Phase 1 | ✅ Approved |
+| MTF Engine | Phase 2 | ✅ Approved |
+| Market Regime Engine | Phase 2 | ✅ Approved |
+| Technical Analyst Agent | Phase 2 | ✅ Approved |
+| Macro Analyst Agent | Phase 2 | ✅ Approved |
+| Positioning Analyst Agent | Phase 2 | ✅ Approved |
+| News Analyst Agent | Phase 2 | ✅ Approved |
+| Risk Analyst Agent | Phase 2 | ✅ Approved |
+| Committee Orchestrator | Phase 2 | ✅ Approved |
+| Decision Engine | Phase 3 | ✅ Approved |
+| Risk Manager | Phase 3 | ✅ Approved |
+| Paper Trading Engine | Phase 3 | ✅ Approved |
+| UI Components (7 panels) | Phase 4 | ✅ Approved |
+| CSS Style System | Phase 4 | ✅ Approved |
+| Historical Database (17 tables) | Phase 5 | ✅ Approved |
+| Central Bank Memory Engine | Phase 6 | ✅ Approved |
+| News Memory Engine | Phase 6 | ✅ Approved |
+| COT Positioning Engine | Phase 6 | ✅ Approved |
+| Economic Memory Engine | Phase 6 | ✅ Approved |
+| FRED Service | Phase 6 | ✅ Approved |
+| NewsAPI Service | Phase 6 | ✅ Approved |
+| COT Service | Phase 6 | ✅ Approved |
+| AI Macro Report | Phase 6 | ✅ Approved |
+| Learning Engine | Phase 7 | ✅ Approved |
+| Backtest Engine | Phase 7 | ✅ Approved |
+| Similarity Engine | Phase 7 | ✅ Approved |
 
 ---
 
-## 4. Data Flow
+## 4. Completed Phases
+
+| Phase | Name | Files Created | Files Modified | Completed |
+|-------|------|--------------|----------------|-----------|
+| v3.0 | Initial Signal Tool | 1 (index.html) | — | 2026-05 |
+| v3.1 | API Integration | 1 (index.html) | — | 2026-05 |
+| v3.2 | TradingView K-line Fix | 1 (index.html) | — | 2026-05 |
+| v4.0 Arch | Architecture Design | 0 | — | 2026-06 |
+| v4.0 P0 | Documentation Foundation | 7 (docs/*.md) | — | 2026-06 (in progress) |
+
+---
+
+## 5. Pending Phases
+
+| Phase | Name | Prerequisite | Est. Files | Est. Lines | Complexity |
+|-------|------|-------------|-----------|-----------|------------|
+| Phase 1 | i18n + Utils + Services + State | P0 approved | 10 | ~1,280 | Low-Medium |
+| Phase 2 | MTF + Committee + Regime | P1 complete | 9 | ~1,230 | Medium-High |
+| Phase 3 | Decision + Risk + Paper | P2 complete | 5 | ~560 | Medium-High |
+| Phase 4 | UI Integration | P3 complete | 17 | ~2,460 | Medium |
+| Phase 5 | Supabase | P4 complete | 22 | ~1,200 | Medium |
+| Phase 6 | Memory + Live APIs | P5 complete | 11 | ~1,400 | High |
+| Phase 7 | Learning + Backtest | P6 complete | 5 | ~740 | High |
+
+**Total estimated: ~9,050 lines across ~79 files (excludes docs)**
+
+---
+
+## 6. Folder Structure
 
 ```
-External APIs
-    ↓
-DataNormalizer.js
-  └─ Standardizes all external data to internal formats
-    ↓
-AppState.js (in-memory cache)
-  └─ Single source of truth for runtime state
-    ↓
-Memory Layer
-  └─ CB memory · News memory · COT history
-  └─ Provides contextual intelligence beyond single data point
-    ↓
-RegimeEngine.run(candles)
-  └─ Outputs: regime label + weight_adjustment JSON
-  └─ Writes to: market_regime_history
-    ↓
-MTFEngine.run(candles_1d, candles_4h, candles_1h)
-  └─ Outputs: mtf_score + mtf_state + confidence_adj
-  └─ If NOT_ALIGNED: pipeline stops, NO_TRADE returned
-    ↓
-CommitteeOrchestrator.run(appState)
-  └─ Runs all 5 agents with regime-adjusted weights
-  └─ Collects votes + computes verdict
-  └─ Writes to: committee_votes
-    ↓
-DecisionEngine.run(votes, regime, mtf)
-  └─ Weighted aggregation + confidence calculation
-  └─ Applies all gates (confidence, RR, agents, MTF, drawdown)
-  └─ Outputs: 8-state signal_strength + full signal spec
-    ↓
-RiskManager.calc(signal, profile)
-  └─ Reads: account_profile · regime · risk_score
-  └─ Applies: 4 sequential multipliers
-  └─ Outputs: lot_size + max_loss + expected_profit
-    ↓
-SignalGenerator.assemble()
-  └─ Attaches AI Macro Report (EN + ZH)
-  └─ Attaches per-agent explanation
-  └─ Assembles complete signal record
-    ↓
-Database write
-  └─ signals table
-  └─ committee_votes table
-  └─ market_snapshots table
-  └─ signal_audit_log (immutable)
-    ↓
-UI render
-  └─ All panels update from AppState
-    ↓
-Paper Trading Engine (if user submits)
-  └─ paper_trades record created
-  └─ On close: signal_results written
-    ↓
-LearningEngine.analyze()
-  └─ Reads signal_results + committee_votes
-  └─ Computes metrics + proposals
-  └─ Writes to: learning_snapshots
+oneto-eurusd-v4/
+│
+├── index.html                              ← Entry point (created Phase 4)
+│
+├── src/
+│   ├── core/
+│   │   ├── DecisionEngine.js               ← Phase 3
+│   │   ├── MTFEngine.js                    ← Phase 2
+│   │   ├── RiskManager.js                  ← Phase 3
+│   │   ├── RegimeEngine.js                 ← Phase 2
+│   │   └── LearningEngine.js               ← Phase 7
+│   │
+│   ├── agents/
+│   │   ├── TechnicalAnalyst.js             ← Phase 2
+│   │   ├── MacroAnalyst.js                 ← Phase 2
+│   │   ├── PositioningAnalyst.js           ← Phase 2
+│   │   ├── NewsAnalyst.js                  ← Phase 2
+│   │   ├── RiskAnalyst.js                  ← Phase 2
+│   │   └── CommitteeOrchestrator.js        ← Phase 2
+│   │
+│   ├── memory/
+│   │   ├── CentralBankMemory.js            ← Phase 6
+│   │   ├── NewsMemory.js                   ← Phase 6
+│   │   ├── EconomicMemory.js               ← Phase 6
+│   │   └── COTMemory.js                    ← Phase 6
+│   │
+│   ├── services/
+│   │   ├── TwelveDataService.js            ← Phase 1
+│   │   ├── FREDService.js                  ← Phase 6
+│   │   ├── NewsAPIService.js               ← Phase 6
+│   │   ├── COTService.js                   ← Phase 6
+│   │   ├── CalendarService.js              ← Phase 6
+│   │   ├── SimDataService.js               ← Phase 1
+│   │   └── DataNormalizer.js               ← Phase 6
+│   │
+│   ├── state/
+│   │   ├── AppState.js                     ← Phase 1
+│   │   └── AccountState.js                 ← Phase 1
+│   │
+│   ├── components/
+│   │   ├── HeroPanel.js                    ← Phase 4
+│   │   ├── CommitteePanel.js               ← Phase 4
+│   │   ├── DecisionPanel.js                ← Phase 4
+│   │   ├── RiskManagerPanel.js             ← Phase 4
+│   │   ├── KLinePanel.js                   ← Phase 4
+│   │   ├── PaperTradePanel.js              ← Phase 3 (logic) + Phase 4 (UI)
+│   │   └── SettingsPanel.js                ← Phase 4
+│   │
+│   ├── utils/
+│   │   ├── indicators.js                   ← Phase 1
+│   │   ├── formatters.js                   ← Phase 1
+│   │   └── validators.js                   ← Phase 1
+│   │
+│   └── i18n/
+│       ├── en.json                         ← Phase 1
+│       ├── zh.json                         ← Phase 1
+│       └── i18n.js                         ← Phase 1
+│
+├── styles/
+│   ├── base.css                            ← Phase 4
+│   ├── layout.css                          ← Phase 4
+│   ├── components.css                      ← Phase 4
+│   ├── risk-manager.css                    ← Phase 4
+│   ├── committee.css                       ← Phase 4
+│   ├── decision.css                        ← Phase 4
+│   ├── kline.css                           ← Phase 4
+│   └── paper-trade.css                     ← Phase 4
+│
+├── supabase/
+│   ├── migrations/
+│   │   ├── 001_signals.sql                 ← Phase 5
+│   │   ├── 002_signal_results.sql
+│   │   ├── 003_market_snapshots.sql
+│   │   ├── 004_committee_votes.sql
+│   │   ├── 005_central_bank_memory.sql
+│   │   ├── 006_news_memory.sql
+│   │   ├── 007_news_events.sql
+│   │   ├── 008_economic_events.sql
+│   │   ├── 009_cot_history.sql
+│   │   ├── 010_market_regime_history.sql
+│   │   ├── 011_macro_reports.sql
+│   │   ├── 012_paper_trades.sql
+│   │   ├── 013_learning_snapshots.sql
+│   │   ├── 014_account_profiles.sql
+│   │   ├── 015_api_health.sql
+│   │   ├── 016_signal_audit_log.sql
+│   │   └── 017_committee_weights.sql
+│   ├── rls/
+│   │   └── policies.sql
+│   └── seeds/
+│       ├── seed_committee_weights.sql
+│       ├── seed_cb_memory.sql
+│       └── seed_cot_history.sql
+│
+├── tests/
+│   ├── core/
+│   ├── agents/
+│   └── utils/
+│
+└── docs/
+    ├── V4_ARCHITECTURE_FREEZE.md           ← Phase 0 ✅
+    ├── V4_MASTER_MANIFEST.md               ← Phase 0 ✅ (this file)
+    ├── DATABASE_SCHEMA.md                  ← Phase 0 ✅
+    ├── API_REPORT.md                       ← Phase 0 ✅
+    ├── DEVELOPMENT_LOG.md                  ← Phase 0 ✅
+    ├── INTERFACE_CONTRACTS.md              ← Phase 0 ✅
+    └── PHASE_IMPLEMENTATION_PLAN.md        ← Phase 0 ✅
 ```
 
 ---
 
-## 5. Decision Flow
+## 7. Dependency Tree
+
+Build order is strictly bottom-up. Never build a consumer before its dependency.
 
 ```
-INPUT: 5 agent scores (0–100, higher = more bearish EUR/USD)
-       + regime (from RegimeEngine)
-       + mtf_result (from MTFEngine)
-       + account_profile (from AccountState)
+LEVEL 0 — No dependencies (build first)
+  src/utils/validators.js
+  src/utils/indicators.js
+  src/i18n/en.json
+  src/i18n/zh.json
 
-STEP 0 — MTF Pre-Gate
-  IF mtf_state = 'not_aligned'
-    → output: NO_TRADE
-    → log to signal_audit_log
-    → STOP (do not proceed)
+LEVEL 1 — Depends on Level 0 only
+  src/i18n/i18n.js             ← needs en.json, zh.json
+  src/utils/formatters.js      ← needs i18n.js
+  src/services/SimDataService.js ← needs indicators.js
 
-STEP 1 — Apply regime-adjusted weights
-  Read active row from committee_weights table
-  Apply regime override from regime_weights JSONB if regime matches
-  Validate weights sum to 1.00
+LEVEL 2 — Depends on Level 0-1
+  src/services/TwelveDataService.js  ← needs SimDataService.js, indicators.js
+  src/state/AccountState.js          ← needs i18n.js
 
-STEP 2 — Compute directional score (excluding Risk agent)
-  directional_score = (tech × w_tech + macro × w_macro +
-                       pos × w_pos + news × w_news)
-                      / (1 - w_risk)
-  Range: 0–100 (>50 = bearish, <50 = bullish)
+LEVEL 3 — Depends on Level 0-2
+  src/state/AppState.js         ← needs AccountState.js, TwelveDataService.js
+  src/core/MTFEngine.js         ← needs indicators.js, TwelveDataService.js
+  src/core/RegimeEngine.js      ← needs indicators.js, AppState.js
 
-STEP 3 — Compute final confidence with adjustments
-  base_confidence = |directional_score - 50| × 2
-  risk_penalty    = max(0, (risk_score - 55) × 0.3)
-  mtf_adjustment  = +10 (fully_aligned)
-                  | +5  (partially_aligned)
-                  | -15 (primary_only / counter-trend)
-                  | 0   (not_aligned → already stopped)
-  final_confidence = clamp(base_confidence - risk_penalty + mtf_adjustment, 0, 100)
+LEVEL 4 — Depends on Level 0-3 (all 5 agents)
+  src/agents/TechnicalAnalyst.js     ← needs indicators.js, AppState.js
+  src/agents/MacroAnalyst.js         ← needs AppState.js
+  src/agents/PositioningAnalyst.js   ← needs AppState.js
+  src/agents/NewsAnalyst.js          ← needs AppState.js
+  src/agents/RiskAnalyst.js          ← needs indicators.js, AppState.js
 
-STEP 4 — Count agent agreement
-  agents_agreeing = count of agents whose vote matches directional direction
-  (Risk Analyst vote = NEUTRAL counts as 0.5)
+LEVEL 5 — Depends on Level 0-4
+  src/agents/CommitteeOrchestrator.js ← needs all 5 agents, MTFEngine
 
-STEP 5 — Map to 8-state output
-  directional_score > 75  AND confidence ≥ 75  AND agents ≥ 4 → STRONG_SELL
-  directional_score 65–75 AND confidence ≥ 65  AND agents ≥ 3 → SELL
-  directional_score 58–65 AND confidence ≥ 55  AND agents ≥ 3 → WEAK_SELL
-  directional_score 45–58                                      → NEUTRAL
-  directional_score 35–42 AND confidence ≥ 55  AND agents ≥ 3 → WEAK_BUY
-  directional_score 25–35 AND confidence ≥ 65  AND agents ≥ 3 → BUY
-  directional_score < 25  AND confidence ≥ 75  AND agents ≥ 4 → STRONG_BUY
-  confidence < min_threshold OR agents < 3                     → NO_TRADE
+LEVEL 6 — Depends on Level 0-5
+  src/core/DecisionEngine.js    ← needs CommitteeOrchestrator, validators
 
-STEP 6 — Hard gates (any failure → NO_TRADE)
-  final_confidence < min_confidence_threshold  → NO_TRADE
-  rr_ratio < 1.5                               → NO_TRADE
-  regime = 'volatile' AND risk_score > 80      → NO_TRADE
-  account_profile.consecutive_losses ≥ 5       → NO_TRADE + alert
-  account_profile.current_drawdown ≥ limit     → NO_TRADE + system halt
+LEVEL 7 — Depends on Level 0-6
+  src/core/RiskManager.js       ← needs DecisionEngine output, AccountState, formatters
 
-OUTPUT:
-{
-  signal_strength:   string,   // 8-state enum
-  direction:         string,   // 'BUY' | 'SELL' | 'NEUTRAL'
-  final_score:       number,   // 0–100
-  final_confidence:  number,   // 0–100
-  agents_agreeing:   number,
-  explanation:       array,    // per-category reasons EN + ZH
-  gate_results:      object,   // which gates passed/failed
-  price_levels:      object    // entry, sl, tp1, tp2, pips, rr
-}
+LEVEL 8 — Depends on Level 0-7 (all components)
+  src/components/HeroPanel.js
+  src/components/CommitteePanel.js
+  src/components/DecisionPanel.js
+  src/components/RiskManagerPanel.js
+  src/components/KLinePanel.js
+  src/components/PaperTradePanel.js
+  src/components/SettingsPanel.js
+
+LEVEL 9 — Depends on all
+  index.html
 ```
 
 ---
 
-## 6. Risk Flow
+## 8. Core Interface Summary
+
+Full specifications are in `docs/INTERFACE_CONTRACTS.md`.
+
+| Interface | Key Input | Key Output |
+|-----------|-----------|------------|
+| `MTFEngine.run(c1d, c4h, c1h)` | 3× candle arrays | `{ mtf_score, mtf_state, bias×3, confidence_adj, gate_pass }` |
+| `RegimeEngine.run(candles)` | 4H candle array | `{ regime, weight_adjustment, position_size_multiplier }` |
+| `CommitteeOrchestrator.run(appState)` | App state object | `{ votes[5], verdict{direction, confidence} }` |
+| `DecisionEngine.run(committee, regime, profile)` | Committee output + regime | `{ signal_strength, direction, confidence, price_levels, explanation[] }` |
+| `RiskManager.calc(params)` | Balance + pips + profile | `{ lot_size, max_loss, expected_profit, rr, level, system_halt }` |
+| `TwelveDataService.getPrice(symbol)` | Symbol string | `{ price, timestamp, source }` |
+| `TwelveDataService.getCandles(symbol, interval, count)` | Symbol + interval + count | `{ candles[], source }` |
+| `t(key, params?)` | i18n key string | Localized string |
+| `PaperTradingEngine.submitTrade(input)` | Trade parameters | Trade record object |
+| `PaperTradingEngine.closeTrade(id, exitPrice, reason)` | Trade ID + exit | Updated trade record |
+
+---
+
+## 9. API Status
+
+| API | Purpose | Status | Key Location | Free Tier | Phase |
+|-----|---------|--------|-------------|-----------|-------|
+| Twelve Data | Price + OHLCV | ⚡ Partial (v3.2) | `localStorage` | 800 req/day | 1 |
+| FRED | Macro data | ⏳ Not started | — | Unlimited | 6 |
+| NewsAPI | Headlines | ⏳ Not started | — | 100 req/day | 6 |
+| CFTC COT | Positioning | ⏳ Not started | — | Free public | 6 |
+| ForexFactory | Calendar | ⏳ Not started | — | RSS free | 6 |
+| Finnhub | News backup | ⏳ Not started | — | 60/min | 6 |
+| Claude API | Report gen | ⏳ Not started | — | Limited | 6+ |
+| Gemini Pro | ZH translation | ⏳ Not started | — | 60/min free | 6+ |
+
+---
+
+## 10. Database Status
+
+| Item | Status | Phase | Notes |
+|------|--------|-------|-------|
+| Supabase project | ⏳ Not created | 5 | Create before Phase 5 begins |
+| Migration files (17) | ⏳ Not written | 5 | Run in numbered order |
+| RLS policies | ⏳ Not written | 5 | Required before any user data |
+| Seed: committee_weights | ⏳ Not written | 5 | Factory default row required |
+| Seed: cb_memory | ⏳ Not written | 5 | Last 12 months Fed/ECB stances |
+| Seed: cot_history | ⏳ Not written | 5 | Last 52 weeks CFTC data |
+
+**Phase 1–4:** localStorage used for all persistence  
+**Phase 5:** Migration to Supabase; localStorage remains as offline fallback
+
+---
+
+## 11. Implementation Roadmap
+
+| Phase | Name | New Files | Modified Files | Est. Lines | Complexity | Gate |
+|-------|------|-----------|----------------|------------|------------|------|
+| 0 | Documentation | 7 MD | 0 | ~1,500 | Low | ✅ Approved |
+| 1 | Foundation | 10 JS | 0 | ~1,280 | Low-Med | P0 approved |
+| 2 | Engines + Committee | 9 JS | 1 MD | ~1,230 | Med-High | P1 complete |
+| 3 | Decision + Risk + Paper | 5 JS | 0 | ~560 | Med-High | P2 complete |
+| 4 | UI Integration | 17 files | 0 | ~2,460 | Medium | P3 complete |
+| 5 | Supabase | 22 SQL/JS | 8 JS | ~1,200 | Medium | P4 complete |
+| 6 | Memory + APIs | 11 JS | 5 JS | ~1,400 | High | P5 complete |
+| 7 | Learning + Backtest | 5 JS | 3 files | ~740 | High | P6 complete |
+
+### Go Criteria for Real Trading (after Paper Trading validation)
 
 ```
-INPUT:
-  account_balance     from account_profiles
-  risk_profile        conservative(1%) | standard(2%) | aggressive(5%)
-  sl_pips             from Decision Engine output
-  tp_pips             tp2_pips from Decision Engine output
-  regime              from RegimeEngine
-  risk_score          from Risk Analyst (0–100)
-  consecutive_losses  from account_profiles
-  win_rate_20         last 20 trades win rate from learning_snapshots
-
-STEP 1 — Base calculation
-  risk_amount      = account_balance × risk_pct
-  pip_value        = $10 per pip per standard lot (EUR/USD)
-  base_lot_size    = risk_amount / (sl_pips × pip_value)
-  max_loss         = base_lot_size × sl_pips × pip_value
-  expected_profit  = base_lot_size × tp_pips × pip_value
-  rr_ratio         = tp_pips / sl_pips
-
-STEP 2 — Apply multipliers (in sequence, each reduces previous result)
-
-  regime_multiplier:
-    trending_bull / trending_bear  → 1.00
-    ranging                        → 0.75
-    volatile                       → 0.50
-    breakout_up / breakout_down    → 1.00
-
-  drawdown_multiplier:
-    consecutive_losses 0–2         → 1.00
-    consecutive_losses 3           → 0.75
-    consecutive_losses 4           → 0.50
-    consecutive_losses ≥ 5         → 0.25 + alert triggered
-
-  performance_multiplier:
-    win_rate_20 < 0.40             → 0.75 (underperforming)
-    win_rate_20 0.40–0.70          → 1.00 (standard)
-    win_rate_20 ≥ 0.70             → 1.00 (no bonus — conservative)
-
-  risk_score_multiplier:
-    risk_score < 40                → 1.25
-    risk_score 40–55               → 1.00
-    risk_score 55–70               → 0.75
-    risk_score 70–85               → 0.50
-    risk_score > 85                → 0.25
-
-STEP 3 — Final lot size
-  final_lot = base_lot_size × all four multipliers
-  round to nearest 0.01
-  clamp: min = 0.01, max = account_balance / 2000
-
-STEP 4 — Risk level classification
-  effective_risk = (final_lot × sl_pips × pip_value) / account_balance
-  < 1.0%  → LOW      (green)
-  1–2%    → STANDARD (amber)
-  2–5%    → ELEVATED (orange)
-  > 5%    → HIGH     (red + warning)
-
-STEP 5 — System halt check
-  IF account_profile.current_drawdown ≥ max_drawdown_limit
-    → system_halt = true
-    → output NO_TRADE
-    → display alert in UI
-    → log to signal_audit_log (severity: critical)
+✅ Win rate ≥ 60% over 100+ paper trades
+✅ Profit factor ≥ 1.5
+✅ Max drawdown ≤ 10%
+✅ Sharpe ratio ≥ 1.0
+✅ No more than 5 consecutive losses in last 50 trades
+✅ All 4 validation phases complete (100 / 300 / 500 / 1000 trades)
 ```
 
 ---
 
-## 7. AI Committee Flow
+## 12. Development Rules
+
+These rules are mandatory across all phases and AI systems working on this project.
 
 ```
-FOR each agent IN [technical, macro, positioning, news, risk]:
+RULE 1 — COMPLETE FILES ONLY
+  Every output file must be complete and directly replaceable.
+  No patches. No snippets. No diffs. No "modify this section."
+  If a file is changed, the entire file must be output.
 
-  agent.run(candles, appState, memoryLayer)
+RULE 2 — DOCUMENT FIRST
+  No module may be coded without its interface defined in
+  INTERFACE_CONTRACTS.md and its phase documented in
+  PHASE_IMPLEMENTATION_PLAN.md.
 
-  Returns:
-  {
-    score:      number,    // 0–100 (higher = more bearish)
-    vote:       string,    // 'BUY' | 'SELL' | 'NEUTRAL'
-    confidence: number,    // 0–100
-    reason_1:   string,    // primary reason (EN, displayed via i18n)
-    reason_2:   string     // secondary reason
-  }
+RULE 3 — DEPENDENCY ORDER
+  Always build in dependency order (see Section 7).
+  Never build a consumer before its dependency exists.
 
-  Written to committee_votes table.
+RULE 4 — PHASE ISOLATION
+  Do not implement future-phase modules during an earlier phase.
+  Phase 1 must not contain Supabase calls.
+  Phase 2 must not contain Learning Engine logic.
+  Phase 3 must not contain Memory Engine logic.
 
-CommitteeOrchestrator:
+RULE 5 — INTERFACE CONTRACTS ARE FROZEN
+  Once INTERFACE_CONTRACTS.md is approved, function signatures
+  cannot change without a documented revision to that file.
 
-  sell_weight = sum(weight of agents voting 'SELL')
-  buy_weight  = sum(weight of agents voting 'BUY')
-  neutral_weight = remainder
+RULE 6 — MANIFEST UPDATE REQUIRED
+  V4_MASTER_MANIFEST.md must be updated at the end of every phase.
+  Required fields: completed tasks, created files, modified files, known issues.
 
-  direction   = sell_weight > buy_weight ? 'SELL' : 'BUY'
-  confidence  = max(sell_weight, buy_weight) × 100
+RULE 7 — GRACEFUL DEGRADATION
+  Every external API call must have a defined fallback behavior.
+  The system must never crash due to an API failure.
+  SimDataService.js is the fallback of last resort.
 
-  Returns:
-  {
-    votes:   VoteObject[5],
-    verdict: { direction, confidence, sell_weight, buy_weight }
-  }
+RULE 8 — ZH/EN RULE
+  Zero hardcoded strings in any non-i18n file.
+  All user-facing text must use t('namespace.key').
 
-Weight validation:
-  Sum of all weights must equal 1.00 (enforced by committee_weights trigger)
-  If any agent throws: use score = 50 (NEUTRAL fallback), log warning
-  All 5 votes always returned — never fewer
-```
+RULE 9 — AUDIT TRAIL
+  Every signal generated must write to signal_audit_log (Phase 5+).
+  signal_audit_log is immutable — no UPDATE, no DELETE ever.
 
----
+RULE 10 — APPROVAL GATE
+  Each phase plan must be approved before coding begins.
+  Architecture changes require a freeze revision.
+  Weight changes in Learning Engine require manual user approval.
 
-## 8. Market Regime Flow
-
-```
-RegimeEngine.run(candles):
-
-STEP 1 — Compute classification indicators
-  ADX(14)    — trend strength
-  ATR(14)    — absolute volatility
-  ATR_ratio  — ATR(14) / ATR_30d_avg
-  BB_width   — Bollinger Band width
-  BB_width_percentile — vs 30-day range
-  MA20, MA50 — moving averages
-  price_vs_MA20, price_vs_MA50
-
-STEP 2 — Classify regime (evaluated in priority order)
-
-  VOLATILE:
-    ATR_ratio > 1.8 OR VIX > 28 OR spread > 3× normal
-    OR major news event within 2 hours
-    → priority classification (safety first)
-
-  BREAKOUT_UP:
-    price closes above BB_upper
-    AND ADX rising from below 25
-    AND previous 5 candles were RANGING
-
-  BREAKOUT_DOWN:
-    price closes below BB_lower
-    AND ADX rising from below 25
-    AND previous 5 candles were RANGING
-
-  TRENDING_BEAR:
-    price < MA20 < MA50
-    AND ADX > 25
-    AND BB_width expanding (percentile > 50)
-
-  TRENDING_BULL:
-    price > MA20 > MA50
-    AND ADX > 25
-    AND BB_width expanding (percentile > 50)
-
-  RANGING:
-    ADX < 20
-    AND BB_width contracting (percentile < 30)
-    (default if no other condition met)
-
-STEP 3 — Output weight_adjustment JSON
-  Each regime maps to specific agent weights
-  Volatile: risk weight raised to 0.30
-  Trending: technical weight raised to 0.45
-  Ranging: macro + positioning weights raised
-
-STEP 4 — Output position_size_multiplier
-  trending:   1.00
-  ranging:    0.75
-  volatile:   0.50
-  breakout:   1.00
-
-STEP 5 — Write to market_regime_history
-  One row per regime change
-  One snapshot every 4H regardless
-
-STEP 6 — Return to Decision Engine
-  Decision Engine reads weight_adjustment before aggregating votes
+RULE 11 — RECOVERABILITY
+  Any AI system (Claude, ChatGPT, Gemini) must be able to continue
+  development from this document alone.
+  Every decision must be documented; no tribal knowledge.
 ```
 
 ---
 
-## 9. Learning Engine Flow
+## 13. Known Issues
 
-```
-TRIGGER: Every 10 closed trades (paper or live)
-
-STEP 1 — Compute performance metrics
-  Source: signal_results table (all closed trades)
-
-  win_rate      = count(outcome='win') / count(all closed)
-  profit_factor = sum(profit_r where win) / abs(sum(profit_r where loss))
-  sharpe_ratio  = mean(daily_r) / std(daily_r) × sqrt(252)
-  max_drawdown  = max peak-to-trough loss in R
-  expectancy    = (win_rate × avg_win_r) - (loss_rate × avg_loss_r)
-  avg_rr        = mean(profit_r / risk_r) where win
-
-STEP 2 — Per-agent accuracy
-  Source: committee_votes WHERE was_correct IS NOT NULL
-  GROUP BY agent
-  agent_win_rate[agent] = AVG(was_correct::int)
-
-STEP 3 — Run optimization rules
-
-  RULE 1 — Technical dominance
-    IF agent_win_rate['technical'] > 0.70 for last 20 trades
-    AND agent_win_rate['macro'] < 0.55
-    THEN propose: technical_weight += 0.05, macro_weight -= 0.05
-
-  RULE 2 — News noise reduction
-    IF agent_win_rate['news'] < 0.50 for last 15 trades
-    THEN propose: news_weight -= 0.05, risk_weight += 0.05
-
-  RULE 3 — Confidence threshold lift
-    IF win_rate of signals with confidence < 65% < 0.50
-    THEN propose: raise min_confidence_default to 70
-
-  RULE 4 — Volatile regime block
-    IF win_rate of volatile regime signals < 0.40 for 10+ volatile trades
-    THEN propose: add 'volatile' to account_profile.blocked_regimes
-
-  RULE 5 — RR distance optimization
-    IF avg_rr_achieved < 1.8 (target = 2.6)
-    THEN propose: reduce tp2_pips to 100 (from 130) for next 20 trades
-
-STEP 4 — Write to learning_snapshots
-  proposed_changes = { ... } JSONB
-  changes_approved = false (requires user action)
-  All metrics written for historical record
-
-STEP 5 — Historical similarity scoring (per new signal)
-  Build feature vector from market_snapshots for new signal:
-    [rsi_14, macd_hist_norm, bb_position, adx_14, atr_ratio,
-     news_sentiment_24h, us_de_spread, dxy_trend_code]
-  Compute cosine_similarity vs last 300 closed signals
-  Take top 10 with similarity > 0.85
-  Compute win_rate of those 10 trades
-  Apply confidence adjustment:
-    top_10_win_rate ≥ 0.70  → confidence += 5%
-    top_10_win_rate 0.50–0.70 → no change
-    top_10_win_rate < 0.40  → confidence -= 10%
-    sample < 5 similar      → no adjustment
-```
+| ID | Description | Severity | Phase to Resolve | Status |
+|----|-------------|----------|-----------------|--------|
+| K-001 | K-line chart blank when Twelve Data API key entered (v3.1 bug) | Critical | Resolved in v3.2 | ✅ Resolved |
+| K-002 | OANDA API registration failures; replaced with Twelve Data | Critical | Resolved in v3.1 | ✅ Resolved |
+| K-003 | Chart.js `candlestick` controller not registered error | Critical | Resolved in v3.2 (switched to TradingView) | ✅ Resolved |
+| K-004 | Canvas reuse error on refresh in v3.1 | High | Resolved in v3.2 (createMainChart/updateMainChart pattern) | ✅ Resolved |
+| K-005 | All data simulated in v3.2 — no live macro/news/COT | Medium | Phase 6 | ⏳ Planned |
+| K-006 | No persistent storage — all state lost on page refresh | Medium | Phase 5 | ⏳ Planned |
 
 ---
 
-## 10. ZH/EN Internationalization Strategy
-
-### Principle
-**English is the source of truth. Chinese is the display layer.**
-
-### File Structure
-```
-src/i18n/
-  en.json   ← All keys defined here first. This file is authoritative.
-  zh.json   ← Mirror of all keys in en.json. Chinese values.
-  i18n.js   ← t(key), setLang(lang), getLang(), locale formatters
-```
-
-### Rules (non-negotiable)
-
-1. Zero hardcoded strings in any component, engine, or agent file
-2. All user-visible text uses `t('namespace.key')`
-3. AI Macro Reports stored in both `summary_en` and `summary_zh` columns
-4. Agent `reason_1` and `reason_2` generated in EN; ZH templates in `i18n/zh.json`
-5. Language state persisted in `localStorage` and `AccountState`
-6. Language switch triggers full UI re-render via custom DOM event — no page reload
-7. Central Bank `key_quote` stored in EN only; displayed with `原文` (original text) label
-8. Number formatting uses locale-aware formatters from `i18n.js`
-9. Date/time formatting respects `account_profile.timezone`
-
-### Key Namespaces
-```
-nav.*         Navigation labels
-signal.*      Signal direction labels (BUY, SELL, STRONG_BUY, etc.)
-risk.*        Risk Manager labels
-agents.*      Agent names, roles, and reason templates
-regime.*      Regime classification labels
-decision.*    Decision Engine labels
-mtf.*         MTF Engine labels and states
-paper.*       Paper Trading labels
-settings.*    Settings page labels
-calendar.*    Economic calendar labels
-news.*        News impact labels
-errors.*      Error messages
-common.*      Shared labels (loading, save, cancel, apply, etc.)
-```
-
-### Future Language Expansion
-To add French (for West/Central Africa expansion):
-1. Create `src/i18n/fr.json` (copy `en.json`, translate values)
-2. Add `'fr'` to supported languages array in `i18n.js`
-3. Add `summary_fr` column to `macro_reports` table
-4. No engine, agent, or component file changes required
-
----
-
-## 11. Future Scalability Strategy
-
-### Frontend Scalability
-```
-Phase 1–4: Single HTML file + modular ES6 JS + CSS files
-Phase 5+:  Supabase integration (no framework change needed)
-Phase 8+:  Potential Next.js migration if SSR or mobile app needed
-Mobile:    Responsive CSS from Phase 1 onwards
-           Claude iOS app compatible via localStorage API key
-```
-
-### Database Scalability
-```
-Supabase PostgreSQL handles 10M+ rows without configuration
-Partition signals + signal_results by month after 10,000 rows
-Partition signal_audit_log by month after 6 months
-Archive audit events older than 1 year (keep signal lifecycle forever)
-After 5,000 market_snapshots: compute feature vectors in
-  snapshot_vectors table for faster cosine similarity queries
-```
-
-### Multi-User Scalability
-```
-account_profiles supports unlimited profiles per user
-Row-Level Security isolates all data per user
-committee_weights are per-user (future: shared institutional configs)
-Signal history queryable per-user with fast indexes
-```
-
-### API Scalability
-```
-api_health table enables intelligent fallback management
-Rate limit tracking prevents quota exhaustion automatically
-Service layer is pluggable:
-  Swap Twelve Data for Polygon with one service file change
-  Add Finnhub alongside NewsAPI with one service file addition
-DataNormalizer.js ensures all services return identical formats
-```
-
-### Learning Engine Scalability
-```
-Regime-stratified learning prevents overfitting to one market condition
-Weight change approval requirement prevents runaway optimization
-Historical similarity uses pre-computed vectors after 500 signals
-Agent win rates computed via indexed SQL queries — O(1) at scale
-```
-
----
-
-## Revision History
-
-| Revision | Date | Changes | Approved By |
-|----------|------|---------|-------------|
-| 0 (Draft) | 2026-06 | Initial architecture design | — |
-| 1 (Final) | 2026-06 | Added: account_profiles, api_health, signal_audit_log, committee_weights tables; MTF Engine; 5th Positioning Agent | Rolan/ONETO |
-
----
-
-*Last updated: 2026-06*  
-*Next revision required if: any module scope changes, new table added, interface contract changes, or agent weight defaults change.*
+*This document must be updated at the end of every development phase.*  
+*An outdated manifest is a project risk.*  
+*Last updated: 2026-06 | Phase: 0 (Documentation)*
