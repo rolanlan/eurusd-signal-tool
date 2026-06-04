@@ -841,3 +841,90 @@ To test: open index.html locally (requires a local HTTP server for ES modules).
 
 ### Next Phase (pending authorisation)
 Phase 5: Supabase integration — 17 tables, RLS, migrations, seeds
+
+---
+
+## ENTRY 014
+
+**Version:** v4.0 Phase 5B-1 + 5B-2 — P0 Bug Fixes  
+**Date:** 2026-06  
+**Author:** Claude / ONETO  
+**Status:** ✅ Complete  
+
+### Summary
+Phase 5B delivers four bug fixes identified in the Phase 5A architecture audit.
+Entry 014 covers both 5B-1 (BUG-03 + BUG-04) and 5B-2 (BUG-02).
+
+### Phase 5B-1 — BUG-03 + BUG-04 (src/core/SignalEngine.js)
+
+**BUG-04 fixed:** `CommitteeEngine._resolveWeights?.(regime, null)`
+was accessing a private (unexported) function that always resolved to
+`undefined`, silently falling back to hardcoded default weights.
+Replaced with `REGIME_WEIGHTS[regime] ?? DEFAULT_WEIGHTS` imported
+directly from `../types/Vote.js` — the single source of truth.
+Priority logic: orchestratorWeights (already resolved by CommitteeOrchestrator)
+> REGIME_WEIGHTS[regime] > DEFAULT_WEIGHTS.
+
+**BUG-03 fixed:** SignalEngine imported CommitteeEngine (Phase 1 inline
+monolith with agents embedded as private functions). Replaced with
+CommitteeOrchestrator (Phase 4A standalone agents). CommitteeOrchestrator
+internally runs RegimeEngine + MTFEngine + all 5 independent agent files
+(TechnicalAnalyst, MacroAnalyst, PositioningAnalyst, NewsAnalyst, RiskAnalyst).
+
+Pipeline simplified: Steps 1–3 previously ran inline _detectRegime()
+and _runMTF() stubs before calling CommitteeEngine. Now Step 2 calls
+CommitteeOrchestrator.run() which handles regime + MTF + agents internally.
+MTF gate check (Step 3) still reads mtf_result.gate_pass from orchestrator output.
+
+Removed: inline _runMTF() function (170 lines), inline _detectRegime()
+function (22 lines), import of CommitteeEngine.
+
+Files changed: src/core/SignalEngine.js (669 → 366 lines, -303 lines)
+
+### Phase 5B-2 — BUG-02 (index.html + styles/layout.css)
+
+**BUG-02 fixed:** Application had no signal generation entry point.
+SignalEngine.run() was never called. AppState.setSignalResult() existed
+but had no caller. All 7 panels perpetually showed default empty state.
+
+Fix adds two triggers:
+  1. Manual: topbar "生成信号 / Generate Signal" button (⚡)
+  2. Automatic: fires on every stateUpdated event (after each data refresh)
+     when AppState.getCurrentPrice() > 0 confirms data is available
+
+Debounce guard: _signalRunning flag prevents concurrent runs;
+a second call while running queues one follow-up (_signalQueued).
+
+Button state: disabled + "分析中... / Analyzing..." during run,
+restored to idle with icon reset on completion.
+
+Full chain now active:
+  AppState.startAutoRefresh(240_000)
+  → DataProvider.getPrice() + getCandles()
+  → 'stateUpdated' event
+  → generateSignal()
+  → SignalEngine.run({ accountProfile })
+  → CommitteeOrchestrator → RegimeEngine + MTFEngine + 5 agents
+  → AppState.setSignalResult(result)
+  → 'signalGenerated' event
+  → all 7 panels re-render with real data
+
+Files changed:
+  index.html (295 → 336 lines, +41 lines)
+  styles/layout.css (206 → 231 lines, +25 lines)
+
+### Total Phase 5B Changes
+  src/core/SignalEngine.js    669 → 366 lines  (-303)
+  index.html                  295 → 336 lines  (+41)
+  styles/layout.css           206 → 231 lines  (+25)
+  Net change: -237 lines
+
+### Known Issues Resolved
+  BUG-02 ✅  BUG-03 ✅  BUG-04 ✅
+
+### Remaining Open Issues
+  BUG-01: KLinePanel full-page blank (P1, deferred)
+  INFO-01: 4 nav group i18n keys missing (P2, minor)
+
+### Next Phase (pending authorisation)
+Phase 5C (BUG-01) or Phase 5 Supabase integration.

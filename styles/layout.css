@@ -131,6 +131,32 @@
 .topbar-source.cached    { color: var(--amber);  background: var(--amber-bg); }
 .topbar-source.simulated { color: var(--text3);  background: rgba(255,255,255,0.05); }
 
+/* Generate Signal button (BUG-02 fix) */
+.topbar-generate-btn {
+  display:       flex;
+  align-items:   center;
+  gap:           5px;
+  padding:       4px 12px;
+  background:    var(--brand-glow);
+  border:        1px solid var(--brand);
+  border-radius: var(--radius-sm);
+  color:         var(--brand);
+  font-size:     0.76rem;
+  font-weight:   600;
+  cursor:        pointer;
+  transition:    background var(--transition), color var(--transition), opacity var(--transition);
+  white-space:   nowrap;
+}
+.topbar-generate-btn:hover:not(:disabled) {
+  background: var(--brand);
+  color:      #fff;
+}
+.topbar-generate-btn:disabled,
+.topbar-generate-btn.generating {
+  opacity: 0.6;
+  cursor:  not-allowed;
+}
+
 #lang-toggle {
   display:     flex;
   gap:         2px;

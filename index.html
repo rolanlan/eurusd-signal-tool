@@ -86,6 +86,12 @@
       <span id="topbar-change" class="topbar-change">—</span>
       <span id="topbar-source" class="topbar-source simulated">SIM</span>
 
+      <!-- Generate Signal button (BUG-02 fix) -->
+      <button id="btn-generate-signal" class="topbar-generate-btn" title="生成信号 / Generate Signal">
+        <span id="btn-generate-icon">⚡</span>
+        <span id="btn-generate-label" data-i18n-zh="生成信号" data-i18n-en="Generate Signal">生成信号</span>
+      </button>
+
       <!-- Language toggle -->
       <div id="lang-toggle">
         <button class="lang-toggle-btn" data-lang="zh">中文</button>
@@ -146,6 +152,7 @@
     // ── Imports ──────────────────────────────────────────
     import * as AppState     from './src/state/AppState.js';
     import * as AccountState from './src/state/AccountState.js';
+    import * as SignalEngine from './src/core/SignalEngine.js';
     import { getLang, setLang, t } from './src/i18n/i18n.js';
 
     // Components
@@ -171,7 +178,7 @@
     let _klineFullMounted = false;
 
     // ── Navigation ────────────────────────────────────────
-    const pages = document.querySelectorAll('.page');
+    const pages    = document.querySelectorAll('.page');
     const navItems = document.querySelectorAll('.nav-item[data-page]');
 
     function showPage(pageId) {
@@ -233,6 +240,7 @@
       _syncLangButtons();
       _updateNavLabels();
       _updateTopbar();
+      _updateGenerateBtn();
     });
 
     _syncLangButtons();
@@ -263,11 +271,11 @@
       }
 
       if (changeEl && price > 0 && prev > 0) {
-        const diff   = price - prev;
-        const pips   = Math.round(diff / 0.0001);
-        const pct    = (diff / prev * 100).toFixed(3);
-        const sign   = pips >= 0 ? '+' : '';
-        const unit   = lang === 'zh' ? '点' : ' pips';
+        const diff  = price - prev;
+        const pips  = Math.round(diff / 0.0001);
+        const pct   = (diff / prev * 100).toFixed(3);
+        const sign  = pips >= 0 ? '+' : '';
+        const unit  = lang === 'zh' ? '点' : ' pips';
         changeEl.textContent = `${sign}${pips}${unit} (${sign}${pct}%)`;
         changeEl.className   = `topbar-change ${pips >= 0 ? 'positive' : 'negative'}`;
       }
@@ -287,8 +295,103 @@
     AppState.subscribe('stateUpdated', () => _updateTopbar());
     _updateTopbar();
 
+    // ── Signal Generation (BUG-02 fix) ────────────────────
+    //
+    // Chain: SignalEngine.run() → AppState.setSignalResult(result)
+    //        → dispatches 'signalGenerated' CustomEvent
+    //        → all 7 panels subscribe to 'signalGenerated' and re-render
+    //
+    // Triggers:
+    //   1. Manual: topbar "Generate Signal" button click
+    //   2. Automatic: fires once after the first data refresh completes
+    //      and then every time candle data is refreshed (stateUpdated).
+    //      Debounced so rapid refreshes don't queue up multiple runs.
+
+    let _signalRunning   = false;
+    let _signalQueued    = false;
+    let _firstRunDone    = false;
+
+    /**
+     * Runs the full signal pipeline and stores the result in AppState.
+     * Debounced: a second call while running queues one follow-up run.
+     * Never throws.
+     */
+    async function generateSignal() {
+      if (_signalRunning) {
+        _signalQueued = true;
+        return;
+      }
+      _signalRunning = true;
+      _setGenerateBtnState('running');
+
+      try {
+        const accountProfile = AccountState.get();
+        const result = await SignalEngine.run({ accountProfile });
+        AppState.setSignalResult(result);
+        _firstRunDone = true;
+      } catch (err) {
+        console.error('[index] generateSignal error:', err.message);
+      } finally {
+        _signalRunning = false;
+        _setGenerateBtnState('idle');
+
+        // Run the queued call that arrived while we were busy
+        if (_signalQueued) {
+          _signalQueued = false;
+          generateSignal();
+        }
+      }
+    }
+
+    // Manual trigger: topbar button
+    const generateBtn = document.getElementById('btn-generate-signal');
+    if (generateBtn) {
+      generateBtn.addEventListener('click', () => generateSignal());
+    }
+
+    // Automatic trigger: after each data refresh
+    // Only fires after candles are available (price > 0)
+    AppState.subscribe('stateUpdated', () => {
+      if (AppState.getCurrentPrice() > 0) {
+        generateSignal();
+      }
+    });
+
+    // ── Generate button label i18n ─────────────────────────
+    function _updateGenerateBtn() {
+      const labelEl = document.getElementById('btn-generate-label');
+      if (!labelEl) return;
+      const lang = getLang();
+      labelEl.textContent = lang === 'zh'
+        ? (labelEl.dataset.i18nZh ?? '生成信号')
+        : (labelEl.dataset.i18nEn ?? 'Generate Signal');
+    }
+
+    // Button loading state
+    function _setGenerateBtnState(state) {
+      const btn     = document.getElementById('btn-generate-signal');
+      const iconEl  = document.getElementById('btn-generate-icon');
+      const labelEl = document.getElementById('btn-generate-label');
+      if (!btn) return;
+
+      if (state === 'running') {
+        btn.disabled = true;
+        btn.classList.add('generating');
+        if (iconEl)  iconEl.textContent  = '⏳';
+        if (labelEl) labelEl.textContent = getLang() === 'zh' ? '分析中...' : 'Analyzing...';
+      } else {
+        btn.disabled = false;
+        btn.classList.remove('generating');
+        if (iconEl) iconEl.textContent = '⚡';
+        _updateGenerateBtn();
+      }
+    }
+
     // ── Auto-refresh ───────────────────────────────────────
-    AppState.startAutoRefresh(240_000);   // 4-minute refresh cycle
+    // startAutoRefresh fires refreshAll() immediately, then every 4 minutes.
+    // Each refreshAll() completion dispatches 'stateUpdated', which triggers
+    // generateSignal() via the subscriber above.
+    AppState.startAutoRefresh(240_000);
 
   </script>
 </body>
