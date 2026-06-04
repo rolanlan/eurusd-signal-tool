@@ -602,3 +602,70 @@ None.
 
 ### Next Phase (pending authorisation)
 Phase 5: UI Integration — index.html + components/ + styles/
+
+---
+
+## ENTRY 011
+
+**Version:** v4.0 Phase 4B — UI Components (Hero, Committee, Decision, Risk)  
+**Date:** 2026-06  
+**Author:** Claude / ONETO  
+**Status:** ✅ Complete  
+
+### Summary
+Phase 4B delivers four production-ready UI components wired to AppState.
+All components listen for stateUpdated, signalGenerated, and languagechange
+events. All strings use t() — zero hardcoded text. No inline CSS.
+
+### Created Files
+```
+src/components/HeroPanel.js         (230 lines)
+  Price + change pips/% · Signal arrow (buy/sell/neutral SVG)
+  Animated confidence ring (SVG stroke-dashoffset)
+  5 mini agent score bars (AGENT_ORDER)
+  Trade plan table (entry/SL/TP1/TP2/RR/lot/maxLoss)
+  Regime + session + data source badges
+
+src/components/CommitteePanel.js    (240 lines)
+  Verdict bar with sell/buy weight track
+  5 agent cards (score bar, confidence, weight bar, reasons)
+  AGENT_META icon + color from Vote.js
+  Weight summary table (agent/weight/contrib/vote)
+  Breakdown grid (sell%/buy%/neutral%/confidence/agreeing)
+
+src/components/DecisionPanel.js     (230 lines)
+  5-step pipeline flow (data→regime→MTF→committee→decision)
+  MTF alignment panel (state badge + confidence adjustment)
+  6-gate results table (pass/fail with icon)
+  Final score + confidence meter + agents agreeing
+  Signal explanation list (per ExplanationItem with color)
+
+src/components/RiskManagerPanel.js  (265 lines)
+  Live calculator: balance input + SL pips + profile buttons
+  Pre-fill from last signal (Use button)
+  Dark result card: lot size + risk level badge + P&L grid
+  4 multiplier breakdown rows
+  Account dashboard: daily/weekly risk, drawdown bar, consec-loss bar
+  Halt banner + warning banner (consecutive losses ≥ 3)
+  Input focus preservation on live recalc
+```
+
+### Modified Files
+```
+docs/DEVELOPMENT_LOG.md   (this entry appended)
+```
+
+### Integration Notes
+- All 4 components call AppState.subscribe() — not addEventListener() directly
+  (AppState.subscribe returns an unsubscribe function for cleanup)
+- HeroPanel and DecisionPanel also add window.addEventListener('languagechange')
+  because language switch re-renders text without new data
+- RiskManagerPanel maintains _slPips/_balance/_riskProfile across renders to
+  preserve user input state without localStorage
+- CommitteePanel reads AGENT_META from Vote.js (single source for colors/icons)
+
+### Known Issues at Close
+None.
+
+### Next Phase (pending authorisation)
+Phase 4C: KLinePanel + PaperTradePanel + SettingsPanel + index.html assembly
