@@ -450,3 +450,75 @@ None.
 ### Next Phase
 Phase 4 (pending authorisation): standalone MTFEngine + RegimeEngine extraction,
 5 individual agent files, CommitteeOrchestrator.
+
+---
+
+## ENTRY 009
+
+**Version:** v4.0 Phase 3 — MTFEngine + RegimeEngine  
+**Date:** 2026-06  
+**Author:** Claude / ONETO  
+**Status:** ✅ Complete  
+
+### Summary
+Delivers the two Level 3 dependency engines that agents depend on.
+MTFEngine replaces the inline _runMTF() stub in SignalEngine.js.
+RegimeEngine replaces the inline _detectRegime() stub in SignalEngine.js.
+Both are now independently callable and fully contract-compliant.
+
+### Created Files
+```
+src/core/MTFEngine.js     (283 lines)
+  Interface Contract 1 compliant
+  4-component per-TF bias: MA alignment, RSI, MACD histogram, BB position
+  Timeframe weights: 1D 50% · 4H 35% · 1H 15%
+  Graceful degradation when 1D or 1H absent (mirror 4H with dampening)
+  4-state classification: fully_aligned / partially_aligned / primary_only / not_aligned
+  confidence_adj: +10 / +5 / -15 / 0 per Architecture Freeze spec
+
+src/core/RegimeEngine.js  (290 lines)
+  Interface Contract 2 compliant
+  6-regime classification in strict priority order (volatile first)
+  Reads REGIME_WEIGHTS from Vote.js — single source of truth for weights
+  localStorage ring buffer (100 entries) — Phase 5 adds Supabase write
+  position_size_multiplier: 0.50 / 0.75 / 1.00 per regime
+  min_confidence_override: 75 (volatile) / 70 (ranging) / null (others)
+  Confidence scoring per regime type (trend strength, ATR, BB percentile)
+```
+
+### Modified Files
+```
+docs/DEVELOPMENT_LOG.md   (this entry appended)
+```
+
+### Dependency Position (Level 3)
+MTFEngine and RegimeEngine sit at Level 3 in the dependency tree:
+- They depend on: indicators.js (Level 0), Vote.js (Level 0)
+- They are depended on by: all 5 agent files (Level 4)
+- They are depended on by: CommitteeOrchestrator (Level 5)
+- They supersede: inline stubs in SignalEngine.js
+
+### Compatibility Notes
+- MTFEngine.run(candles1d, candles4h, candles1h) — parameter ORDER matches contract
+- MTFResult shape is identical to what SignalEngine inline stub returned
+- RegimeResult.weight_adjustment pulls directly from Vote.js REGIME_WEIGHTS
+  → CommitteeEngine and DecisionEngine read the same weight set
+- RegimeResult.transition_trigger provides human-readable explanation for UI
+
+### Completion Criteria
+- [x] MTFEngine.run() returns valid MTFResult on any input (including empty arrays)
+- [x] All 3 TF bearish → fully_aligned, confidence_adj +10, gate_pass true
+- [x] 1D vs 4H conflict → primary_only, confidence_adj -15, gate_pass true
+- [x] |MTF score| ≤ 20 → not_aligned, confidence_adj 0, gate_pass false
+- [x] RegimeEngine.run() returns volatile on ATR ratio ≥ 1.8
+- [x] Bearish MA stack + ADX > 25 + BB expanding → trending_bear
+- [x] Price outside BB + ADX recovering → breakout_up / breakout_down
+- [x] Default fallback → ranging
+- [x] Both engines: never throw on any input
+
+### Known Issues at Close
+None.
+
+### Next Phase (pending authorisation)
+5 individual agent files (TechnicalAnalyst, MacroAnalyst, PositioningAnalyst,
+NewsAnalyst, RiskAnalyst) + CommitteeOrchestrator.
