@@ -392,3 +392,61 @@ None. All P1 + P2 known issues resolved.
 
 ### Next Phase
 Phase 3: Standalone MTFEngine + RegimeEngine + 5 agent files + CommitteeOrchestrator
+
+---
+
+## ENTRY 008
+
+**Version:** v4.0 Phase 3 — DecisionEngine  
+**Date:** 2026-06  
+**Author:** Claude / ONETO  
+**Status:** ✅ Complete  
+
+### Summary
+Phase 3 delivers the standalone DecisionEngine module — the full
+Interface Contract 4 implementation. It extracts and supersedes the
+inline _decide() stub that lived inside SignalEngine.js, giving
+every consumer a clean public API: DecisionEngine.run(committeeOutput,
+accountProfile, currentPrice) → DecisionResult.
+
+### Created Files
+```
+src/core/DecisionEngine.js   (322 lines)
+  Full 8-state decision pipeline (Steps 0–7)
+  Interface Contract 4 compliant
+  Integrates with: CommitteeEngine, RiskManager, MarketSnapshotEngine
+  ZH explanation translation (lightweight, no external dep)
+  All 6 gate checks with reason codes
+  Drawdown pre-check before any scoring
+  Regime-adjusted weight resolution (matches CommitteeEngine logic)
+```
+
+### Modified Files
+```
+docs/DEVELOPMENT_LOG.md   (this entry appended)
+```
+
+### Compatibility Notes
+- DecisionResult.price_levels supplied directly → RiskManager.calc() reads sl_pips/tp_pips
+- DecisionResult.agent_scores matches every field SignalEngine assembles onto Signal
+- DecisionResult.explanation passes straight through to createSignal()
+- DecisionResult.gates identical shape to SignalEngine inline gates object
+- _resolveWeights() mirrors CommitteeEngine logic — consistent weight sets
+
+### Phase 3 Completion Criteria
+- [x] run() returns valid DecisionResult for all committee inputs
+- [x] NOT_ALIGNED MTF → signal_strength: NO_TRADE, gate.mtf_pass: false
+- [x] confidence < min → signal_strength: NO_TRADE, gate.confidence_pass: false
+- [x] consecutive_losses >= limit → NO_TRADE before scoring begins
+- [x] STRONG_SELL on score > 75, confidence >= 75, agents >= 4
+- [x] SELL on score > 65, confidence >= 65, agents >= 3
+- [x] WEAK_SELL on score > 58, confidence >= 55, agents >= 3
+- [x] explanation array contains entries for all 5 agents + MTF
+- [x] Never throws on any input
+
+### Known Issues at Close
+None.
+
+### Next Phase
+Phase 4 (pending authorisation): standalone MTFEngine + RegimeEngine extraction,
+5 individual agent files, CommitteeOrchestrator.
