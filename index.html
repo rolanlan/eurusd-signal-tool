@@ -153,6 +153,7 @@
     import * as AppState     from './src/state/AppState.js';
     import * as AccountState from './src/state/AccountState.js';
     import * as SignalEngine from './src/core/SignalEngine.js';
+    import * as MemoryAggregator from './src/services/MemoryAggregator.js';
     import { getLang, setLang, t } from './src/i18n/i18n.js';
 
     // Components
@@ -326,7 +327,8 @@
 
       try {
         const accountProfile = AccountState.get();
-        const result = await SignalEngine.run({ accountProfile });
+       const memoryLayer    = await MemoryAggregator.getMemoryLayer();
+       const result         = await SignalEngine.run({ accountProfile, memoryLayer });
         AppState.setSignalResult(result);
         _firstRunDone = true;
       } catch (err) {

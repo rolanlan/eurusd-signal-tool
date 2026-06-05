@@ -278,6 +278,148 @@ export function getCachedCandles(interval = '4H') {
 }
 
 // ─────────────────────────────────────────────
+// DXY — TWELVE DATA ICE DXY  (V4.3 STEP 1)
+// New functions added below. All existing EUR/USD
+// functions above are unchanged.
+// ─────────────────────────────────────────────
+
+const DXY_SYM              = 'DXY';
+const DXY_STORAGE_KEY_PRICE  = 'oneto_dxy_price_v1';
+const DXY_STORAGE_KEY_CANDLES = 'oneto_dxy_candles_v1';
+const DXY_CACHE_TTL_PRICE   = 15 * 60 * 1000;   // 15 minutes (V4.3 spec)
+const DXY_CACHE_TTL_CANDLES = 4  * 60 * 60 * 1000; // 4 hours
+
+const _dxyCache = {
+  price:   { data: null, fetchedAt: 0 },
+  candles: { data: null, fetchedAt: 0 },
+};
+
+/**
+ * Fetch ICE DXY spot price via Twelve Data.
+ * Cache TTL: 15 minutes (23% of 800/day credit budget).
+ * Falls back to stub price 104.5 if unavailable.
+ * Never throws.
+ *
+ * @returns {Promise<DXYPriceResult>}
+ */
+export async function getDXYPrice() {
+  // In-memory cache
+  if (_dxyCache.price.data && Date.now() - _dxyCache.price.fetchedAt < DXY_CACHE_TTL_PRICE) {
+    return { price: _dxyCache.price.data, source: 'cached' };
+  }
+
+  // localStorage cache
+  try {
+    const stored = JSON.parse(localStorage.getItem(DXY_STORAGE_KEY_PRICE) ?? 'null');
+    if (stored?.price && Date.now() - stored.fetchedAt < DXY_CACHE_TTL_PRICE * 4) {
+      _dxyCache.price = { data: stored.price, fetchedAt: stored.fetchedAt };
+      return { price: stored.price, source: 'cached' };
+    }
+  } catch (_) {}
+
+  const key = _getApiKey();
+  if (!key) return { price: 104.5, source: 'stub' };
+
+  try {
+    const url  = `${TD_BASE}/price?symbol=${encodeURIComponent(DXY_SYM)}&apikey=${key}`;
+    const res  = await _fetchWithTimeout(url, 5000);
+    const json = await res.json();
+
+    if (json.status === 'error' || !json.price) {
+      const stale = _dxyCache.price.data;
+      return { price: stale ?? 104.5, source: stale ? 'cached' : 'stub' };
+    }
+
+    const price = parseFloat(json.price);
+    _dxyCache.price = { data: price, fetchedAt: Date.now() };
+    try {
+      localStorage.setItem(DXY_STORAGE_KEY_PRICE, JSON.stringify({ price, fetchedAt: Date.now() }));
+    } catch (_) {}
+
+    return { price, source: 'live' };
+
+  } catch (err) {
+    const stale = _dxyCache.price.data;
+    return { price: stale ?? 104.5, source: stale ? 'cached' : 'stub' };
+  }
+}
+
+/**
+ * Fetch ICE DXY daily OHLCV candles via Twelve Data.
+ * Cache TTL: 4 hours.
+ * Falls back to null if unavailable (caller must handle null).
+ * Never throws.
+ *
+ * @param {number} [count=30]
+ * @returns {Promise<DXYCandlesResult>}
+ */
+export async function getDXYCandles(count = 30) {
+  // In-memory cache
+  if (_dxyCache.candles.data && Date.now() - _dxyCache.candles.fetchedAt < DXY_CACHE_TTL_CANDLES) {
+    return { candles: _dxyCache.candles.data, source: 'cached' };
+  }
+
+  // localStorage cache
+  try {
+    const stored = JSON.parse(localStorage.getItem(DXY_STORAGE_KEY_CANDLES) ?? 'null');
+    if (stored?.candles?.length && Date.now() - stored.fetchedAt < DXY_CACHE_TTL_CANDLES * 6) {
+      _dxyCache.candles = { data: stored.candles, fetchedAt: stored.fetchedAt };
+      return { candles: stored.candles, source: 'cached' };
+    }
+  } catch (_) {}
+
+  const key = _getApiKey();
+  if (!key) return { candles: null, source: 'stub' };
+
+  try {
+    const url  = `${TD_BASE}/time_series?symbol=${encodeURIComponent(DXY_SYM)}`
+               + `&interval=1day&outputsize=${count}&apikey=${key}`;
+    const res  = await _fetchWithTimeout(url, 8000);
+    const json = await res.json();
+
+    if (json.status === 'error' || !json.values?.length) {
+      const stale = _dxyCache.candles.data;
+      return { candles: stale ?? null, source: stale ? 'cached' : 'stub' };
+    }
+
+    const candles = [...json.values].reverse().map(_normalizeCandle);
+    const deduped = _deduplicateCandles(candles);
+
+    _dxyCache.candles = { data: deduped, fetchedAt: Date.now() };
+    try {
+      localStorage.setItem(DXY_STORAGE_KEY_CANDLES, JSON.stringify({ candles: deduped, fetchedAt: Date.now() }));
+    } catch (_) {}
+
+    return { candles: deduped, source: 'live' };
+
+  } catch (err) {
+    const stale = _dxyCache.candles.data;
+    return { candles: stale ?? null, source: stale ? 'cached' : 'stub' };
+  }
+}
+
+/**
+ * Derives DXY trend from daily candles using MA5 vs MA20.
+ * Pure function — no API calls, no cache.
+ *
+ * @param {Candle[]} candles  - DXY daily candles, ascending time order
+ * @returns {'rising'|'falling'|'ranging'}
+ */
+export function computeDXYTrend(candles) {
+  if (!candles || candles.length < 20) return 'ranging';
+  const closes = candles.map(c => c.close);
+  const last   = closes.length;
+
+  const ma5  = closes.slice(last - 5).reduce((s, v) => s + v, 0) / 5;
+  const ma20 = closes.slice(last - 20).reduce((s, v) => s + v, 0) / 20;
+
+  const diff = ma5 - ma20;
+  if (diff >  0.15) return 'rising';
+  if (diff < -0.15) return 'falling';
+  return 'ranging';
+}
+
+// ─────────────────────────────────────────────
 // SIM DATA GENERATOR
 // ─────────────────────────────────────────────
 
