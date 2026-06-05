@@ -232,6 +232,7 @@ function _buildDataStatusSection(lang) {
                       : dxyStatus === 'stale'   ? '#f97316'
                       : 'var(--text4)';
   const dxyBadgeLabel = dxyStatus === 'live'    ? 'LIVE'
+                      : dxyStatus === 'derived' ? 'DERIVED'
                       : dxyStatus === 'cached'  ? 'CACHE'
                       : dxyStatus === 'stale'   ? 'STALE'
                       : dxyStatus === 'stub'    ? 'STUB'
@@ -247,7 +248,7 @@ function _buildDataStatusSection(lang) {
     <div class="settings-info-row" style="align-items:flex-start;flex-direction:column;gap:4px;padding:var(--gap-sm) 0;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:var(--gap-sm);width:100%">
         <span class="info-label" style="font-weight:700;color:var(--text1)">
-          ${lang === 'zh' ? 'DXY 美元指数' : 'DXY (ICE)'}
+          ${lang === 'zh' ? 'DXY（合成/EUR推导）' : 'DXY (Synthetic, EUR-derived)'}
         </span>
         <span style="font-size:0.68rem;font-weight:700;padding:1px 7px;border-radius:999px;
                      background:${dxyBadgeColor === 'var(--green)' ? 'var(--green-bg)' : dxyBadgeColor === 'var(--amber-dim)' ? 'var(--amber-bg)' : 'var(--bg3)'};
@@ -266,7 +267,7 @@ function _buildDataStatusSection(lang) {
           ${dxyTrendArrow} ${dxyTrend.toUpperCase()}
         </span>
         <span style="font-size:0.68rem;color:var(--text3)">
-          ${lang === 'zh' ? 'MA5/MA20 趋势' : 'MA5/MA20 trend'}
+          ${lang === 'zh' ? 'EUR/USD推导 · MA5/MA20趋势' : 'EUR/USD derived · MA5/MA20 trend'}
         </span>
       </div>` : `
       <div style="font-size:0.78rem;color:var(--text4)">
@@ -279,7 +280,7 @@ function _buildDataStatusSection(lang) {
     { label: 'EUR/USD',
       src:   tdSource,
       extra: '' },
-    { label: 'FRED Macro',
+    { label: lang === 'zh' ? 'FRED 宏观（CACHE=真实数据缓存）' : 'FRED Macro (CACHE = real data cached)',
       src:   status.fred?.status ?? 'not_fetched',
       extra: status.fred?.spread != null ? ` · Spread ${status.fred.spread.toFixed(2)}%` : '' },
     { label: lang === 'zh' ? '新闻情绪' : 'News',

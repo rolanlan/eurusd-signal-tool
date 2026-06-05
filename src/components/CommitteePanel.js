@@ -344,7 +344,7 @@ function _buildCommitteeMeta(signal, lang) {
       src: AppState.getDataSource() },
     { label: lang === 'zh' ? '宏观 (FRED)'   : 'Macro (FRED)',
       src: memStatus?.fred?.status     ?? 'stub' },
-    { label: lang === 'zh' ? 'DXY 指数'      : 'DXY (TD)',
+    { label: lang === 'zh' ? 'DXY（合成推导）' : 'DXY (Synthetic)',
       src: memStatus?.dxy?.status      ?? 'stub',
       detail: memStatus?.dxy?.price    ? memStatus.dxy.price.toFixed(3) + ' ' + (memStatus.dxy.trend ?? '') : null },
     { label: lang === 'zh' ? '新闻情绪'      : 'News',

@@ -323,8 +323,8 @@ function _buildScoreDisplay(signal, lang) {
         <div class="conf-number">${conf}%</div>
         <div class="conf-sublabel"
              title="${lang === 'zh'
-               ? '置信度 = |方向分-50|×2 - 风险惩罚 + MTF调整。低于65%触发NO_TRADE'
-               : 'Confidence = |dirScore-50|×2 − riskPenalty + MTFadj. <65% → NO_TRADE'}"
+               ? '置信度 = |方向分-50|×2 - 风险惩罚 + MTF调整'
+               : 'Confidence = |dirScore-50|×2 − riskPenalty + MTFadj'}"
         >${t('signal.confidence')}</div>
         <div class="conf-meter-track">
           <div class="conf-meter-fill conf-${_confLevel(conf)}"
@@ -482,7 +482,7 @@ function _buildSignalAudit(signal, lang) {
     { label: lang === 'zh' ? '宏观 (FRED)'   : 'Macro (FRED)',
       src: memStatus?.fred?.status ?? 'stub',
       detail: memStatus?.fred?.spread != null ? `Spread ${memStatus.fred.spread.toFixed(2)}%` : null },
-    { label: lang === 'zh' ? 'DXY 指数 (TD)' : 'DXY index (TD)',
+    { label: lang === 'zh' ? 'DXY（合成/EUR推导）' : 'DXY (Synthetic/EUR-derived)',
       src: memStatus?.dxy?.status ?? 'stub',
       detail: memStatus?.dxy?.price ? `${memStatus.dxy.price.toFixed(3)} ${memStatus.dxy.trend ?? ''}` : null },
     { label: lang === 'zh' ? '新闻情绪'      : 'News sentiment',
