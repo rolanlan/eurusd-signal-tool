@@ -70,6 +70,20 @@
           <span class="nav-item-icon">📝</span>
           <span class="nav-item-label" data-i18n="nav.paper">Paper Trading</span>
         </a>
+        <a class="nav-item" data-page="trade" href="#">
+          <span class="nav-item-icon">🎯</span>
+          <span class="nav-item-label" data-i18n="nav.trade">Trade Setup</span>
+        </a>
+        <a class="nav-item" data-page="history" href="#">
+          <span class="nav-item-icon">📋</span>
+          <span class="nav-item-label" data-i18n="nav.history">Trade History</span>
+        </a>
+        <a class="nav-item" data-page="performance" href="#">
+          <span class="nav-item-icon">📈</span>
+          <span class="nav-item-label" data-i18n="nav.performance">Performance</span>
+        </a>
+
+        <!-- Config group -->
 
         <!-- Config group -->
         <span class="nav-group-label" data-i18n="nav.config">Config</span>
@@ -140,8 +154,24 @@
       </section>
 
       <!-- Settings page -->
+      <!-- Settings page -->
       <section class="page" id="page-settings">
         <div id="settings-mount"></div>
+      </section>
+
+      <!-- Trade Setup page (V5.2) -->
+      <section class="page" id="page-trade">
+        <div id="trade-mount"></div>
+      </section>
+
+      <!-- Trade History page (V5.2) -->
+      <section class="page" id="page-history">
+        <div id="history-mount"></div>
+      </section>
+
+      <!-- Performance Dashboard page (V5.2) -->
+      <section class="page" id="page-performance">
+        <div id="performance-mount"></div>
       </section>
 
     </main>
@@ -165,7 +195,10 @@
     import * as RiskManagerPanel from './src/components/RiskManagerPanel.js';
     import * as KLinePanel       from './src/components/KLinePanel.js';
     import * as PaperTradePanel  from './src/components/PaperTradePanel.js';
-    import * as SettingsPanel    from './src/components/SettingsPanel.js';
+    import * as SettingsPanel          from './src/components/SettingsPanel.js';
+    import * as TradeSetupPanel       from './src/components/TradeSetupPanel.js';
+    import * as TradeHistoryPanel     from './src/components/TradeHistoryPanel.js';
+    import * as PerformanceDashboard  from './src/components/PerformanceDashboard.js';
 
     // ── Mount all panels ─────────────────────────────────
     HeroPanel.mount(document.getElementById('hero-mount'));
@@ -176,6 +209,9 @@
     RiskManagerPanel.mount(document.getElementById('risk-mount'));
     PaperTradePanel.mount(document.getElementById('paper-mount'));
     SettingsPanel.mount(document.getElementById('settings-mount'));
+    TradeSetupPanel.mount(document.getElementById('trade-mount'));
+    TradeHistoryPanel.mount(document.getElementById('history-mount'));
+    PerformanceDashboard.mount(document.getElementById('performance-mount'));
 
     // ── Navigation ────────────────────────────────────────
     // BUG-01 FIX: KLinePanel singleton — _mounted guard blocks second mount().

@@ -24,6 +24,9 @@
 const EN = {
   "nav": {
     "dashboard":  "Dashboard",
+    "trade":       "Trade Setup",
+    "history":     "Trade History",
+    "performance": "Performance",
     "committee":  "AI Committee",
     "decision":   "Decision Engine",
     "risk":       "Risk Manager",
@@ -177,6 +180,48 @@ const EN = {
       "manual": "Manual Close", "timeout": "Timeout"
     }
   },
+  "trade": {
+    "title":     "Current Trade Setup",
+    "gates":     "Gate Status",
+    "noSignal":  "No Actionable Signal",
+    "submitBtn": "Submit Paper Trade",
+    "reason":    "Reason",
+    "dataSrc":   "Data Sources",
+    "submitted": "Trade Submitted",
+    "tradeId":   "Trade ID"
+  },
+  "history": {
+    "title":    "Trade History",
+    "empty":    "No trades yet",
+    "time":     "Time",
+    "entry":    "Entry",
+    "exit":     "Exit",
+    "pnl":      "P&L",
+    "result":   "Result",
+    "regime":   "Regime",
+    "strength": "Signal",
+    "conf":     "Conf",
+    "duration": "Duration",
+    "detail":   "Details",
+    "dataQ":    "Data Quality"
+  },
+  "perf": {
+    "title":        "Performance",
+    "totalTrades":  "Total Trades",
+    "winRate":      "Win Rate",
+    "profitFactor": "Profit Factor",
+    "totalPnl":     "Total P&L",
+    "totalPnlR":    "Total P&L (R)",
+    "avgWin":       "Avg Win (R)",
+    "avgLoss":      "Avg Loss (R)",
+    "expectancy":   "Expectancy (R)",
+    "maxDrawdown":  "Max Drawdown (R)",
+    "maxConsec":    "Max Consec. Loss",
+    "goLive":       "Go-Live Ready",
+    "notYet":       "Not Yet Eligible",
+    "noTrades":     "Not enough data yet",
+    "validation":   "Validation Progress"
+  },
   "settings": {
     "title":         "Settings",
     "apiKey":        "Twelve Data API Key",
@@ -263,6 +308,9 @@ const EN = {
 const ZH = {
   "nav": {
     "dashboard":  "仪表盘",
+    "trade":       "交易设置",
+    "history":     "交易记录",
+    "performance": "绩效分析",
     "committee":  "AI委员会",
     "decision":   "决策引擎",
     "risk":       "风险管理",
@@ -415,6 +463,48 @@ const ZH = {
       "tp1": "止盈1触发", "tp2": "止盈2触发", "sl": "止损触发",
       "manual": "手动平仓", "timeout": "超时平仓"
     }
+  },
+  "trade": {
+    "title":     "当前交易设置",
+    "gates":     "门控状态",
+    "noSignal":  "暂无可执行信号",
+    "submitBtn": "提交模拟交易",
+    "reason":    "原因",
+    "dataSrc":   "数据来源",
+    "submitted": "交易已提交",
+    "tradeId":   "交易号"
+  },
+  "history": {
+    "title":    "交易记录",
+    "empty":    "暂无交易记录",
+    "time":     "时间",
+    "entry":    "入场",
+    "exit":     "出场",
+    "pnl":      "盈亏",
+    "result":   "结果",
+    "regime":   "市场状态",
+    "strength": "信号",
+    "conf":     "置信",
+    "duration": "持仓时长",
+    "detail":   "详情",
+    "dataQ":    "数据质量"
+  },
+  "perf": {
+    "title":        "绩效分析",
+    "totalTrades":  "总交易数",
+    "winRate":      "胜率",
+    "profitFactor": "盈利因子",
+    "totalPnl":     "总盈亏",
+    "totalPnlR":    "总盈亏(R)",
+    "avgWin":       "平均盈利(R)",
+    "avgLoss":      "平均亏损(R)",
+    "expectancy":   "期望值(R)",
+    "maxDrawdown":  "最大回撤(R)",
+    "maxConsec":    "最大连续亏损",
+    "goLive":       "可进入实盘",
+    "notYet":       "尚未达标",
+    "noTrades":     "暂无足够数据",
+    "validation":   "验证进度"
   },
   "settings": {
     "title":         "系统设置",
