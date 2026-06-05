@@ -176,11 +176,11 @@
     SettingsPanel.mount(document.getElementById('settings-mount'));
 
     // KLine full page — separate instance
-    let _klineFullMounted = false;
-
     // ── Navigation ────────────────────────────────────────
-    const pages    = document.querySelectorAll('.page');
-    const navItems = document.querySelectorAll('.nav-item[data-page]');
+    // BUG-01 FIX: capture original parent ONCE before any navigation moves the node.
+    const pages          = document.querySelectorAll('.page');
+    const navItems       = document.querySelectorAll('.nav-item[data-page]');
+    const _klineDashParent = document.getElementById('kline-dash-mount')?.parentElement;
 
     function showPage(pageId) {
       pages.forEach(p => p.classList.remove('active'));
@@ -192,17 +192,26 @@
       if (nav)  nav.classList.add('active');
 
       // Lazy-mount full-page K-Line on first visit
-      if (pageId === 'kline' && !_klineFullMounted) {
-        const mount = document.getElementById('kline-full-mount');
-        if (mount) {
-          KLinePanel.mount(mount);
-          _klineFullMounted = true;
+      // BUG-01 FIX: move the already-mounted chart node between containers
+      const klineNode     = document.getElementById('kline-dash-mount');
+      const klinePageSlot = document.getElementById('kline-full-mount');
+
+      if (klineNode && klinePageSlot && _klineDashParent) {
+        if (pageId === 'kline') {
+          klinePageSlot.appendChild(klineNode);
+        } else {
+          if (!_klineDashParent.contains(klineNode)) {
+            _klineDashParent.appendChild(klineNode);
+          }
         }
       }
 
-      // Refresh K-line when switching to it
+      // Resize + refresh when K-Line page becomes visible
       if (pageId === 'kline') {
-        setTimeout(() => KLinePanel.refresh?.(), 50);
+        setTimeout(() => {
+          KLinePanel.forceResize?.();
+          KLinePanel.refresh?.();
+        }, 30);
       }
 
       // Store last visited page
@@ -327,8 +336,8 @@
 
       try {
         const accountProfile = AccountState.get();
-       const memoryLayer    = await MemoryAggregator.getMemoryLayer();
-       const result         = await SignalEngine.run({ accountProfile, memoryLayer });
+        const memoryLayer    = await MemoryAggregator.getMemoryLayer();
+        const result         = await SignalEngine.run({ accountProfile, memoryLayer });
         AppState.setSignalResult(result);
         _firstRunDone = true;
       } catch (err) {
