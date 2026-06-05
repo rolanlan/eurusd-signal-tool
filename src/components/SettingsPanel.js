@@ -218,44 +218,111 @@ function _buildApiSection(hasTD, hasFRED, hasFinn, lang) {
 // ── Data Status Panel ────────────────────────
 
 function _buildDataStatusSection(lang) {
-  const status = MemoryAggregator.getStatus();
+  const status   = MemoryAggregator.getStatus();
+  const tdSource = AppState.getDataSource();
 
+  // ── DXY detail row (prominent — STEP 1 feature) ──
+  const dxyStatus    = status.dxy?.status ?? 'not_fetched';
+  const dxyPrice     = status.dxy?.price;
+  const dxyTrend     = status.dxy?.trend ?? '—';
+  const dxyFetchedAt = status.dxy?.fetched_at ?? 0;
+
+  const dxyBadgeColor = dxyStatus === 'live'    ? 'var(--green)'
+                      : dxyStatus === 'cached'  ? 'var(--amber-dim)'
+                      : dxyStatus === 'stale'   ? '#f97316'
+                      : 'var(--text4)';
+  const dxyBadgeLabel = dxyStatus === 'live'    ? 'LIVE'
+                      : dxyStatus === 'cached'  ? 'CACHE'
+                      : dxyStatus === 'stale'   ? 'STALE'
+                      : dxyStatus === 'stub'    ? 'STUB'
+                      : '—';
+  const dxyAge = dxyFetchedAt
+    ? _formatAge(Date.now() - dxyFetchedAt, lang)
+    : '';
+  const dxyTrendArrow = dxyTrend === 'rising'  ? ' ↑'
+                      : dxyTrend === 'falling' ? ' ↓'
+                      : dxyTrend === 'ranging' ? ' →' : '';
+
+  const dxyBlock = `
+    <div class="settings-info-row" style="align-items:flex-start;flex-direction:column;gap:4px;padding:var(--gap-sm) 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:var(--gap-sm);width:100%">
+        <span class="info-label" style="font-weight:700;color:var(--text1)">
+          ${lang === 'zh' ? 'DXY 美元指数' : 'DXY (ICE)'}
+        </span>
+        <span style="font-size:0.68rem;font-weight:700;padding:1px 7px;border-radius:999px;
+                     background:${dxyBadgeColor === 'var(--green)' ? 'var(--green-bg)' : dxyBadgeColor === 'var(--amber-dim)' ? 'var(--amber-bg)' : 'var(--bg3)'};
+                     color:${dxyBadgeColor};border:1px solid currentColor">
+          ${dxyBadgeLabel}
+        </span>
+        ${dxyAge ? `<span style="font-size:0.68rem;color:var(--text4)">${dxyAge}</span>` : ''}
+      </div>
+      ${dxyPrice ? `
+      <div style="display:flex;gap:var(--gap-md);align-items:center">
+        <span style="font-family:var(--font-num);font-size:1.1rem;font-weight:700;color:var(--text1)">
+          ${dxyPrice.toFixed(3)}
+        </span>
+        <span style="font-size:0.8rem;font-weight:600;
+                     color:${dxyTrend === 'rising' ? 'var(--green)' : dxyTrend === 'falling' ? 'var(--red)' : 'var(--amber-dim)'}">
+          ${dxyTrendArrow} ${dxyTrend.toUpperCase()}
+        </span>
+        <span style="font-size:0.68rem;color:var(--text3)">
+          ${lang === 'zh' ? 'MA5/MA20 趋势' : 'MA5/MA20 trend'}
+        </span>
+      </div>` : `
+      <div style="font-size:0.78rem;color:var(--text4)">
+        ${lang === 'zh' ? '未连接 — 请配置 Twelve Data Key' : 'Not connected — configure Twelve Data key'}
+      </div>`}
+    </div>`;
+
+  // ── Other services summary rows ──
   const rows = [
-    { label: 'EUR/USD',   src: AppState.getDataSource(),        extra: '' },
-    { label: 'DXY',       src: status.dxy?.status ?? 'not_fetched',
-      extra: status.dxy?.price ? ` · ${status.dxy.price.toFixed(3)} (${status.dxy.trend ?? '—'})` : '' },
-    { label: 'FRED Macro',src: status.fred?.status ?? 'not_fetched',
-      extra: status.fred?.spread ? ` · Spread ${status.fred.spread.toFixed(2)}%` : '' },
+    { label: 'EUR/USD',
+      src:   tdSource,
+      extra: '' },
+    { label: 'FRED Macro',
+      src:   status.fred?.status ?? 'not_fetched',
+      extra: status.fred?.spread != null ? ` · Spread ${status.fred.spread.toFixed(2)}%` : '' },
     { label: lang === 'zh' ? '新闻情绪' : 'News',
-      src: status.news?.status ?? 'not_fetched',
-      extra: status.news?.score_24h != null ? ` · Net24h: ${status.news.score_24h > 0 ? '+' : ''}${status.news.score_24h}` : '' },
+      src:   status.news?.status ?? 'not_fetched',
+      extra: status.news?.score_24h != null ? ` · ${status.news.score_24h > 0 ? '+' : ''}${status.news.score_24h}` : '' },
     { label: lang === 'zh' ? '经济日历' : 'Calendar',
-      src: status.calendar?.status ?? 'not_fetched',
+      src:   status.calendar?.status ?? 'not_fetched',
       extra: status.calendar?.next_event_hours != null
         ? ` · Next ${status.calendar.next_event_hours.toFixed(1)}h`
         : '' },
-    { label: 'COT',       src: status.cot?.status ?? 'not_fetched',
+    { label: 'COT',
+      src:   status.cot?.status ?? 'not_fetched',
       extra: status.cot?.z_score != null ? ` · z=${status.cot.z_score.toFixed(2)}` : '' },
   ].map(({ label, src, extra }) => {
-    const dot   = src === 'live'        ? '●'
-                : src === 'cached'      ? '○'
-                : src === 'stale'       ? '◔'
-                : src === 'stub'        ? '◌'
-                : '×';
+    const badgeLabel = src === 'live'   ? 'LIVE'
+                     : src === 'cached' ? 'CACHE'
+                     : src === 'stale'  ? 'STALE'
+                     : src === 'stub'   ? 'STUB'
+                     : '—';
     const color = src === 'live'   ? 'var(--green)'
-                : src === 'cached' ? 'var(--amber)'
+                : src === 'cached' ? 'var(--amber-dim)'
                 : src === 'stale'  ? '#f97316'
                 : 'var(--text4)';
+    const bg    = src === 'live'   ? 'var(--green-bg)'
+                : src === 'cached' ? 'var(--amber-bg)'
+                : 'var(--bg3)';
     return `
       <div class="settings-info-row">
         <span class="info-label">${label}</span>
-        <span class="info-value" style="color:${color}">${dot} ${src}${extra}</span>
+        <div style="display:flex;align-items:center;gap:var(--gap-xs)">
+          <span style="font-size:0.65rem;font-weight:700;padding:1px 6px;border-radius:999px;
+                       background:${bg};color:${color};border:1px solid currentColor">
+            ${badgeLabel}
+          </span>
+          <span class="info-value" style="color:var(--text3)">${extra}</span>
+        </div>
       </div>`;
   }).join('');
 
   return `
     <div class="settings-section">
       <div class="settings-section-title">${lang === 'zh' ? '数据来源状态' : 'Data Source Status'}</div>
+      ${dxyBlock}
       ${rows}
       <div class="settings-row settings-row-actions" style="margin-top:var(--gap-sm)">
         <button class="settings-btn" id="btn-refresh-all">
@@ -265,6 +332,26 @@ function _buildDataStatusSection(lang) {
       <span class="settings-feedback" id="refresh-feedback"></span>
     </div>
   `;
+}
+
+/**
+ * Formats a millisecond age into a human-readable string.
+ * @param {number} ageMs
+ * @param {string} lang
+ * @returns {string}
+ */
+function _formatAge(ageMs, lang) {
+  if (!ageMs || ageMs < 0) return '';
+  const mins = Math.floor(ageMs / 60000);
+  const hrs  = Math.floor(mins / 60);
+  if (lang === 'zh') {
+    if (hrs > 0) return `${hrs}小时前`;
+    if (mins > 0) return `${mins}分钟前`;
+    return '刚刚';
+  }
+  if (hrs > 0) return `${hrs}h ago`;
+  if (mins > 0) return `${mins}m ago`;
+  return 'just now';
 }
 
 // ── Language ─────────────────────────────────

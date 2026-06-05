@@ -408,14 +408,18 @@ export async function getDXYCandles(count = 30) {
 export function computeDXYTrend(candles) {
   if (!candles || candles.length < 20) return 'ranging';
   const closes = candles.map(c => c.close);
-  const last   = closes.length;
+  const n = closes.length;
 
-  const ma5  = closes.slice(last - 5).reduce((s, v) => s + v, 0) / 5;
-  const ma20 = closes.slice(last - 20).reduce((s, v) => s + v, 0) / 20;
-
+  const ma5  = closes.slice(n - 5).reduce((s, v)  => s + v, 0) / 5;
+  const ma20 = closes.slice(n - 20).reduce((s, v) => s + v, 0) / 20;
   const diff = ma5 - ma20;
-  if (diff >  0.15) return 'rising';
-  if (diff < -0.15) return 'falling';
+
+  // Velocity confirmation: 3-day slope must agree with MA divergence
+  // Threshold 0.10: DXY trades ~100-110; 0.10 = ~0.09% meaningful move
+  const slope = (closes[n - 1] - closes[n - 3]) / 2;
+
+  if (diff >  0.10 && slope >= 0)  return 'rising';
+  if (diff < -0.10 && slope <= 0)  return 'falling';
   return 'ranging';
 }
 

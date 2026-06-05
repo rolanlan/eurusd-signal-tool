@@ -186,6 +186,7 @@ async function _getDXYBundle() {
     dxy_level:   parseFloat(dxyPrice.price.toFixed(3)),
     dxy_trend:   trend,
     data_source: dxyPrice.source ?? 'cached',
+    fetched_at:  Date.now(),
   };
 }
 
@@ -301,7 +302,7 @@ function _buildStatus(fred, dxy, news, calendar, cot) {
       status:     dxy?.data_source ?? 'missing',
       price:      dxy?.dxy_level   ?? null,
       trend:      dxy?.dxy_trend   ?? null,
-      fetched_at: 0,
+      fetched_at: dxy?.fetched_at  ?? 0,
     },
     news: {
       status:     news?.data_source         ?? 'missing',
